@@ -62,7 +62,7 @@ template_directory = os.path.join(base_dir, "Templates")
 2. Run the script:
 
 ```bash
-python daily_todo_script.py
+python update_daily_todo.py
 ```
 
 The script will automatically find the most recent todo file in your specified
