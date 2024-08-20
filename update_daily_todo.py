@@ -20,7 +20,17 @@ def write_file_content(file_path, content):
 
 def process_todo_section(section):
     lines = section.split('\n')
-    return '\n'.join([line.replace('[x]', '[ ]') if line.strip().startswith('- [') else line for line in lines])
+    processed_lines = []
+    
+    for line in lines:
+        # Keep header lines and unchecked tasks
+        if line.strip().startswith('#') or '- [ ]' in line:
+            processed_lines.append(line)
+        # Remove checked tasks (lines with '[x]')
+        elif '- [x]' not in line:
+            processed_lines.append(line)
+    
+    return '\n'.join(processed_lines)
 
 def process_projects_section(section):
     lines = section.split('\n')
@@ -31,7 +41,9 @@ def process_projects_section(section):
     parent_unchecked = False
 
     for line in lines:
-        if line.strip().startswith('## '):
+        if line.strip().startswith('# Projects'):
+            processed_lines.append(line)
+        elif line.strip().startswith('## '):
             if current_h2 and h2_has_unchecked:
                 processed_lines.extend(current_h2)
             current_h2 = [line]
@@ -54,15 +66,27 @@ def process_projects_section(section):
                         h2_has_unchecked = True
             else:
                 current_h2.append(line)
+        else:
+            processed_lines.append(line)
 
     if current_h2 and h2_has_unchecked:
         processed_lines.extend(current_h2)
 
     return '\n'.join(processed_lines)
 
-import re
-import os
-from datetime import datetime
+def reset_recurring_tasks(content):
+    lines = content.split('\n')
+    processed_lines = []
+    
+    for line in lines:
+        if '🔁' in line:  # This emoji indicates a recurring task
+            # Reset the task to unchecked
+            line = line.replace('- [x]', '- [ ]')
+            # Remove the completion date if present
+            line = re.sub(r'✅ \d{4}-\d{2}-\d{2}', '', line)
+        processed_lines.append(line)
+    
+    return '\n'.join(processed_lines)
 
 def update_todo_list():
     base_dir = r"C:\Users\17272\Documents\Obsidian\CodeWars"
@@ -86,16 +110,16 @@ def update_todo_list():
         body = sections[i+1] if i+1 < len(sections) else ""
         
         if "TODO" in header:
-            processed_body = process_todo_section(body)
+            processed_body = process_todo_section(header + body)
         elif "Projects" in header:
-            processed_body = process_projects_section(body)
-            print("Projects section is being processed")
+            processed_body = process_projects_section(header + body)
         else:
-            processed_body = body
+            processed_body = header + body
         
-        processed_sections.extend([header, processed_body])
+        processed_sections.append(processed_body)
 
-    processed_content = ''.join(processed_sections)
+    processed_content = '\n\n'.join(processed_sections)
+    processed_content = reset_recurring_tasks(processed_content)
 
     # Update the template file
     template_path = os.path.join(template_directory, '{{date}}.md')
